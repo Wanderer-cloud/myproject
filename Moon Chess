@@ -1,0 +1,305 @@
+#include <stdio.h>
+#include <stdlib.h>//system("pause")让程序暂停，等待用户按任意键
+#include <ctype.h>  //isspace函数会自动检测并跳过这些空格、制表符等空白字符，让输入更灵活
+#define SIZE 3
+#define MAX_MOVES 30
+#define MAX_PIECES 3
+
+char board[SIZE][SIZE];
+
+int player1Moves[MAX_PIECES][2];//玩家1的棋子位置记录数组，最多记录3个棋子的(x,y)坐标
+int player2Moves[MAX_PIECES][2];
+int player1Count = 0;//玩家1初始拥有0个棋子
+int player2Count = 0;
+int moves = 0;//回合数为初始为0
+int currentPlayer = 1;//初始由玩家1开始落子，也就是x
+
+void clearboard()
+{
+    system("cls");//清屏
+}
+
+void showBoard() 
+{
+    printf("\n  当前棋盘:\n");
+    printf("   1   2   3\n");//先显示列标
+    for (int i = 0; i < SIZE; i++) //控制行
+    {
+        printf("%d ", i + 1);//显示行标
+        for (int j = 0; j < SIZE; j++)//控制列
+        {
+            printf(" %c ", board[i][j]);//显示棋子或者空格
+            if (j < SIZE - 1) printf("|");//竖分隔符，制表
+        }
+        printf("\n");
+        if (i < SIZE - 1) printf("  -----------\n");//行分隔符，制表
+    }
+    printf("\n");
+}
+
+void beginBoard()
+{
+    for (int i = 0; i < SIZE; i++)//将棋盘所有位置设置为空格
+    {
+        for (int j = 0; j < SIZE; j++)
+        {
+            board[i][j] = ' ';
+        }
+    }
+    player1Count = 0;//重置游戏状态
+    player2Count = 0;
+    moves = 0;
+}
+
+int checkWin() 
+{
+
+    for (int i = 0; i < SIZE; i++)//检查横向三连
+    {
+        if (board[i][0] != ' ' &&
+            board[i][0] == board[i][1] &&
+            board[i][1] == board[i][2])
+        {
+            return 1;
+        }
+    }
+
+
+    for (int j = 0; j < SIZE; j++) //检查纵向三连
+    {
+        if (board[0][j] != ' ' &&
+            board[0][j] == board[1][j] &&
+            board[1][j] == board[2][j])
+        {
+            return 1;
+        }
+    }
+
+    //检查对角线
+    if (board[0][0] != ' ' &&
+        board[0][0] == board[1][1] &&
+        board[1][1] == board[2][2])
+    {
+        return 1;
+    }
+
+    if (board[0][2] != ' ' &&
+        board[0][2] == board[1][1] &&
+        board[1][1] == board[2][0]) {
+        return 1;
+    }
+
+    return 0;//没有达成胜利条件，游戏继续
+}
+
+void removeOldestPiece(int player)
+{
+    if (player == 1 && player1Count > 0)//获取最早的棋子坐标
+    {
+        int x = player1Moves[0][0];//数组的第一个就是最早的
+        int y = player1Moves[0][1];
+        board[x][y] = ' ';//从棋盘中清除最早的棋子
+
+        for (int i = 0; i < player1Count - 1; i++)//把后面的棋子向前移动，[1]移动[0]，[2]移动到[1]
+        {
+            player1Moves[i][0] = player1Moves[i + 1][0];
+            player1Moves[i][1] = player1Moves[i + 1][1];
+        }
+        player1Count--;//棋子数量减一
+        printf("玩家X的最早棋子(%d,%d)已消失!\n", x + 1, y + 1);
+    }
+    else if (player == 2 && player2Count > 0) 
+    {
+        int x = player2Moves[0][0];
+        int y = player2Moves[0][1];
+        board[x][y] = ' ';
+
+        for (int i = 0; i < player2Count - 1; i++)
+        {
+            player2Moves[i][0] = player2Moves[i + 1][0];
+            player2Moves[i][1] = player2Moves[i + 1][1];
+        }
+        player2Count--;
+        printf("玩家O的最早棋子(%d,%d)已消失!\n", x + 1, y + 1);
+    }
+}
+
+int makeMove()
+{
+    char input[10];//考虑到输入坐标时，除了两个数字之外，中间可能会加入其他分隔符，所以设置的大小是10
+    char symbol;//确定两个玩家的棋子符号
+    if (currentPlayer == 1)
+    {
+        symbol = 'X';
+    }
+    else
+    {
+        symbol = 'O';
+    }
+    printf("玩家%c的回合，请输入坐标(如12表示第1行第2列): ", symbol);//获取输入内容
+
+
+    fgets(input, sizeof(input), stdin); //检查输入格式，防止系统报错
+    if (input[0] == '\n' || input[0] == '\0') 
+    {
+        printf("请输入两个数字(1-3)。\n");
+        return 0;
+    }
+    int x = -1, y = -1;//设为无效值,表示还没有得到有效的x/y坐标
+    int i = 0;//数组索引从0开始，此时处理input数组的第i个字符
+    while (input[i] != '\0' && isspace(input[i])) //\0确保没有到达字符串末尾，跳过可能会输入的空白符
+    {
+        i++;//一直跳过到遇到有效字符，循环结束
+    }
+    if (input[i] >= '1' && input[i] <= '3') 
+    {
+        x = input[i] - '0';//input储存的是字符，利用ascII码值实现字符转数字
+        i++;
+    }
+
+    while (input[i] != '\0' && isspace(input[i]))//跳过中间空白字符或者其他字符
+    {
+        i++;
+    }
+    if (input[i] >= '1' && input[i] <= '3')//必须是‘1’，‘2’，‘3’之一
+    {
+        y = input[i] - '0';//利用ascII码值实现字符转数字
+        i++;
+    }
+    if (x == -1 || y == -1)//检查是否成功解析了两个数字，必须检查，因为进入if有条件，可能结束了x，y依旧是初始值
+    {
+        printf("输入格式错误! 请输入两个1-3的数字(如12或1 2)。\n");
+        return 0;
+    }
+    x--;//转换为数组索引，因为输入的坐标是从一开始，要转化成数组记录的从零开始
+    y--;
+
+
+    if (board[x][y] != ' ') //检查位置是否可用
+    {
+        printf("该位置已有棋子! 请选择其他位置。\n");
+        return 0;
+    }
+    board[x][y] = symbol;//放置棋子
+
+    if (currentPlayer == 1)//更新棋子记录
+    {
+        if (player1Count >= MAX_PIECES)//大于上限就调用函数清除最早的
+        {
+            removeOldestPiece(1);
+        }
+
+        if (player1Count < MAX_PIECES) //记录新棋子位置
+        {
+            player1Moves[player1Count][0] = x;
+            player1Moves[player1Count][1] = y;
+            player1Count++;
+        }
+    }
+    else
+    {
+        if (player2Count >= MAX_PIECES) {
+            removeOldestPiece(2);
+        }
+
+        if (player2Count < MAX_PIECES) {
+            player2Moves[player2Count][0] = x;
+            player2Moves[player2Count][1] = y;
+            player2Count++;
+        }
+    }
+
+    moves++;//回合数记录增加
+    return 1;//落子成功
+}
+
+void switchPlayer() //玩家转换
+{
+    if (currentPlayer == 1)
+    {
+        currentPlayer = 2;
+    }
+    else {
+        currentPlayer = 1;
+    }
+}
+
+void showStatus() //显示游戏状态
+{
+    printf("回合: %d/%d\n", moves, MAX_MOVES);
+    printf("玩家X棋子数: %d, 玩家O棋子数: %d\n", player1Count, player2Count);
+}
+
+int askagain()//询问是否重开游戏
+{
+    char choice;
+    printf("游戏结束！\n");
+    printf("是否重新开始？\n");
+    printf("输入t重新开始，f退出：");
+    if (scanf_s("%c", &choice,1) != 1)
+    {
+        return 0;
+    }
+    if (choice == 't' )
+    {
+        return 1;//重新开始
+    }
+    else
+    {
+        return 0;//退出游戏
+    }
+}
+
+int main()
+{
+    int doagain;
+    do//控制整个游戏重启
+    {
+        clearboard();//初始化游戏
+        beginBoard();
+        printf("=== 月亮棋游戏 ===\n");//说明规则
+        printf("规则:\n");
+        printf("- 3x3棋盘，玩家X和O轮流落子\n");
+        printf("- 三个相同棋子连成一线获胜\n");
+        printf("- 每个玩家最多同时存在3个棋子\n");
+        printf("- 放置第4个棋子时，最早放置的棋子会消失\n");
+        printf("- 30回合后未分胜负则为平局\n");
+        printf("- 输入方式: 连续输入两个数字(如12表示第1行第2列)，或用空格分隔\n\n");
+        while (1)//单局游戏主循环，1代表真值，创造一个无限循环，直到遇到break结束
+        {
+            showBoard();
+            showStatus();
+            while (makeMove()==0) //所有程序已经在makeMove中完成，如果输入有效，则跳出循环，输入无效，继续执行makeMove，直到有效
+            {
+            }
+            clearboard();//清除历史棋盘
+            if (checkWin()) 
+            {
+                showBoard();
+                if (currentPlayer == 1)
+                {
+                    printf("恭喜! 玩家x获胜!\n");
+                }
+                else 
+                {
+                    printf("恭喜! 玩家o获胜!\n");
+                }
+                break;//结束本局游戏
+            }
+
+            if (moves >= MAX_MOVES)
+            {
+                showBoard();
+                printf("游戏结束! 30回合未分胜负，平局!\n");
+                break;//结束本局游戏
+            }
+
+            switchPlayer();
+        }doagain = askagain();//询问是否重开，结果存入doagain
+    } while (doagain);//doagain为真就继续
+    clearboard();
+    printf("\n游戏结束!\n");
+    printf("\n感谢游玩!\n");
+    system("pause");
+    return 0;
+}
